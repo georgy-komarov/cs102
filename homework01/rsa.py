@@ -34,7 +34,9 @@ def gcd(a, b):
     >>> gcd(3, 7)
     1
     """
-    return math.gcd(a, b)
+    while b:
+        a, b = b, a % b
+    return a
 
 
 def multiplicative_inverse(e, phi):
