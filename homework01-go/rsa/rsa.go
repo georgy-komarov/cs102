@@ -48,7 +48,7 @@ func multiplicativeInverse(e int, phi int) int {
 		x0, x1 = x1, x0-q*x1
 	}
 	if b != 1 {
-		errors.New("no inverse exists")
+		panic("no inverse exists")
 	}
 	res := x0 % phi
 	if res < 0 {
