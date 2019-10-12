@@ -2,6 +2,7 @@ package rsa
 
 import (
 	"errors"
+	"math"
 	"math/big"
 	"math/rand"
 )
@@ -17,15 +18,43 @@ type KeyPair struct {
 }
 
 func isPrime(n int) bool {
-	return big.NewInt(int64(n)).ProbablyPrime(0)
+	if n == 2 || n == 3 {
+		return true
+	}
+	if n < 2 || n%2 == 0 {
+		return false
+	}
+	for i := 5; i < int(math.Sqrt(float64(n)))+1; i += 2 {
+		if n%i == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func gcd(a int, b int) int {
-	return int(new(big.Int).GCD(nil, nil, big.NewInt(int64(a)), big.NewInt(int64(b))).Int64())
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
 }
 
 func multiplicativeInverse(e int, phi int) int {
-	return int(new(big.Int).ModInverse(big.NewInt(int64(e)), big.NewInt(int64(phi))).Int64())
+	x0, x1, y0, y1, q := 0, 1, 1, 0, 0
+	a, b := e, phi
+	for a != 0 {
+		q, b, a = b/a, a, b%a
+		y0, y1 = y1, y0-q*y1
+		x0, x1 = x1, x0-q*x1
+	}
+	if b != 1 {
+		errors.New("no inverse exists")
+	}
+	res := x0 % phi
+	if res < 0 {
+		res += phi
+	}
+	return res
 }
 
 func GenerateKeypair(p int, q int) (KeyPair, error) {
