@@ -14,11 +14,13 @@ def encrypt_vigenere(plaintext, keyword):
 
     for index, character in enumerate(plaintext):
         if character.islower():
-            shift = ord(keyword[index % keyword_length].lower()) - 97
-            ciphertext += chr(97 + (ord(character) - 97 + shift) % 26)
+            chr_code = ord('a')
+            shift = ord(keyword[index % keyword_length].lower()) - chr_code
+            ciphertext += chr(chr_code + (ord(character) - chr_code + shift) % 26)
         elif character.isupper():
-            shift = ord(keyword[index % keyword_length].upper()) - 65
-            ciphertext += chr(65 + (ord(character) - 65 + shift) % 26)
+            chr_code = ord('A')
+            shift = ord(keyword[index % keyword_length].upper()) - chr_code
+            ciphertext += chr(chr_code + (ord(character) - chr_code + shift) % 26)
         else:
             ciphertext += character
 
@@ -41,11 +43,13 @@ def decrypt_vigenere(ciphertext, keyword):
 
     for index, character in enumerate(ciphertext):
         if character.islower():
-            shift = ord(keyword[index % keyword_length].lower()) - 97
-            plaintext += chr(97 + (ord(character) - 97 - shift) % 26)
+            chr_code = ord('a')
+            shift = ord(keyword[index % keyword_length].lower()) - chr_code
+            plaintext += chr(chr_code + (ord(character) - chr_code - shift) % 26)
         elif character.isupper():
-            shift = ord(keyword[index % keyword_length].upper()) - 65
-            plaintext += chr(65 + (ord(character) - 65 - shift) % 26)
+            chr_code = ord('A')
+            shift = ord(keyword[index % keyword_length].upper()) - chr_code
+            plaintext += chr(chr_code + (ord(character) - chr_code - shift) % 26)
         else:
             plaintext += character
     return plaintext
