@@ -3,20 +3,14 @@ import random
 
 from typing import List, Optional, Tuple
 
-
 Cell = Tuple[int, int]
 Cells = List[int]
 Grid = List[Cells]
 
 
 class GameOfLife:
-    
-    def __init__(
-        self,
-        size: Tuple[int, int],
-        randomize: bool=True,
-        max_generations: Optional[float]=float('inf')
-    ) -> None:
+    def __init__(self, size: Tuple[int, int], randomize: bool = True,
+                 max_generations: Optional[float] = float('inf')) -> None:
         # Размер клеточного поля
         self.rows, self.cols = size
         # Предыдущее поколение клеток
@@ -28,7 +22,7 @@ class GameOfLife:
         # Текущее число поколений
         self.generations = 1
 
-    def create_grid(self, randomize: bool=False) -> Grid:
+    def create_grid(self, randomize: bool = False) -> Grid:
         # Copy from previous assignment
         pass
 
@@ -67,7 +61,7 @@ class GameOfLife:
         """
         pass
 
-    def save(filename: pathlib.Path) -> None:
+    def save(self, filename: pathlib.Path) -> None:
         """
         Сохранить текущее состояние клеток в указанный файл.
         """
