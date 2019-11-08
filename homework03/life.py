@@ -40,11 +40,11 @@ class GameOfLife:
         out : Grid
             Матрица клеток размером `cell_height` х `cell_width`.
         """
-        grid = [[0 for _ in range(self.cols)] for _ in range(self.rows)]
+        grid = [[False for _ in range(self.cols)] for _ in range(self.rows)]
         if randomize:
             for y in range(self.rows):
                 for x in range(self.cols):
-                    grid[y][x] = random.randint(0, 1)
+                    grid[y][x] = bool(random.randint(0, 1))
         return grid
 
     def get_neighbours(self, cell: Cell) -> Cells:
