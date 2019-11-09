@@ -14,9 +14,11 @@ func EncryptCaesar(plaintext string, shift int) string {
 
 	for _, character := range plaintext {
 		if unicode.IsLower(character) {
-			ciphertext += string(rune(97 + (int(character)-97+(shift%26))%26))
+			chrCode := int('a')
+			ciphertext += string(rune(chrCode + (int(character)-chrCode+(shift%26))%26))
 		} else if unicode.IsUpper(character) {
-			ciphertext += string(rune(65 + (int(character)-65+(shift%26))%26))
+			chrCode := int('A')
+			ciphertext += string(rune(chrCode + (int(character)-chrCode+(shift%26))%26))
 		} else {
 			ciphertext += string(character)
 		}
@@ -35,17 +37,19 @@ func DecryptCaesar(ciphertext string, shift int) string {
 
 	for _, character := range ciphertext {
 		if unicode.IsLower(character) {
-			newLetter := (int(character) - 97 - (shift % 26)) % 26
+			chrCode := int('a')
+			newLetter := (int(character) - chrCode - (shift % 26)) % 26
 			if newLetter < 0 {
 				newLetter += 26
 			}
-			plaintext += string(rune(97 + newLetter))
+			plaintext += string(rune(chrCode + newLetter))
 		} else if unicode.IsUpper(character) {
-			newLetter := (int(character) - 65 - (shift % 26)) % 26
+			chrCode := int('A')
+			newLetter := (int(character) - chrCode - (shift % 26)) % 26
 			if newLetter < 0 {
 				newLetter += 26
 			}
-			plaintext += string(rune(65 + newLetter))
+			plaintext += string(rune(chrCode + newLetter))
 		} else {
 			plaintext += string(character)
 		}

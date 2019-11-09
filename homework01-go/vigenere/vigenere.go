@@ -9,11 +9,13 @@ func EncryptVigenere(plaintext string, keyword string) string {
 
 	for index, character := range plaintext {
 		if unicode.IsLower(character) {
-			shift := int(unicode.ToLower(rune(keyword[index%keywordLength]))) - 97
-			ciphertext += string(rune(97 + (int(character)-97+shift)%26))
+			chrCode := int('a')
+			shift := int(unicode.ToLower(rune(keyword[index%keywordLength]))) - chrCode
+			ciphertext += string(rune(chrCode + (int(character)-chrCode+shift)%26))
 		} else if unicode.IsUpper(character) {
-			shift := int(unicode.ToUpper(rune(keyword[index%keywordLength]))) - 65
-			ciphertext += string(rune(65 + (int(character)-65+shift)%26))
+			chrCode := int('A')
+			shift := int(unicode.ToUpper(rune(keyword[index%keywordLength]))) - chrCode
+			ciphertext += string(rune(chrCode + (int(character)-chrCode+shift)%26))
 		} else {
 			ciphertext += string(character)
 		}
@@ -28,19 +30,21 @@ func DecryptVigenere(ciphertext string, keyword string) string {
 
 	for index, character := range ciphertext {
 		if unicode.IsLower(character) {
-			shift := int(unicode.ToLower(rune(keyword[index%keywordLength]))) - 97
-			newLetter := (int(character) - 97 - shift) % 26
+			chrCode := int('a')
+			shift := int(unicode.ToLower(rune(keyword[index%keywordLength]))) - chrCode
+			newLetter := (int(character) - chrCode - shift) % 26
 			if newLetter < 0 {
 				newLetter += 26
 			}
-			plaintext += string(rune(97 + newLetter))
+			plaintext += string(rune(chrCode + newLetter))
 		} else if unicode.IsUpper(character) {
-			shift := int(unicode.ToUpper(rune(keyword[index%keywordLength]))) - 65
-			newLetter := (int(character) - 65 - shift) % 26
+			chrCode := int('A')
+			shift := int(unicode.ToUpper(rune(keyword[index%keywordLength]))) - chrCode
+			newLetter := (int(character) - chrCode - shift) % 26
 			if newLetter < 0 {
 				newLetter += 26
 			}
-			plaintext += string(rune(65 + newLetter))
+			plaintext += string(rune(chrCode + newLetter))
 		} else {
 			plaintext += string(character)
 		}
