@@ -3,7 +3,6 @@ import config
 import telebot
 from bs4 import BeautifulSoup
 
-
 bot = telebot.TeleBot(config.access_token)
 
 
@@ -83,5 +82,4 @@ def get_all_schedule(message):
 
 
 if __name__ == '__main__':
-    bot.polling(none_stop=True)
-
+    bot.polling()
