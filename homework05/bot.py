@@ -13,20 +13,6 @@ CACHE = {}
 DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 DAYS_RUSSIAN = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье']
 WEEK_RUSSIAN = ['все недели', 'чётная неделя', 'нечётная неделя']
-MONTHS_RUSSIAN = {
-    'января': 1,
-    'февраля': 2,
-    'марта': 3,
-    'апреля': 4,
-    'мая': 5,
-    'июня': 6,
-    'июля': 7,
-    'августа': 8,
-    'сентября': 9,
-    'октября': 10,
-    'ноября': 11,
-    'декабря': 12,
-}
 
 bot = telebot.TeleBot(config.access_token)
 apihelper.proxy = getattr(config, 'proxy', None)
@@ -41,10 +27,6 @@ def get_current_day(group):
 
     # Получаем таблицу датой и неделей
     schedule_week = soup.find("h2", attrs={"class": "schedule-week"})
-
-    date_list = schedule_week.contents[0].lower().split()[:-2]
-    date_list[1] = str(MONTHS_RUSSIAN[date_list[1]])
-    date_str = ' '.join(date_list)
     date = datetime.datetime.now()
 
     if 'нечетная' in schedule_week.text.lower():
