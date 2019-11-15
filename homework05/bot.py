@@ -7,6 +7,7 @@ from telebot import apihelper
 
 import config
 
+CACHE = {}
 DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 DAYS_RUSSIAN = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье']
 WEEK_RUSSIAN = ['все недели', 'чётная неделя', 'нечётная неделя']
@@ -61,8 +62,12 @@ def get_page(group, week=''):
         domain=config.domain,
         week=week,
         group=group)
-    response = requests.get(url)
-    web_page = response.text
+
+    if url not in CACHE:
+        response = requests.get(url)
+        CACHE[url] = response.text
+
+    web_page = CACHE[url]
     return web_page
 
 
