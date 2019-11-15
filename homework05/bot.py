@@ -43,16 +43,14 @@ def get_current_day(group):
     date_list = schedule_week.contents[0].lower().split()[:-2]
     date_list[1] = str(MONTHS_RUSSIAN[date_list[1]])
     date_str = ' '.join(date_list)
-    date = datetime.datetime.strptime(date_str, '%d %m %Y')
+    date = datetime.datetime.now()
 
-    day = date.weekday()
-
-    if 'нечетная' in schedule_week.text:
+    if 'нечетная' in schedule_week.text.lower():
         schedule_week = 2
     else:
         schedule_week = 1
 
-    return schedule_week, day
+    return schedule_week, date
 
 
 def get_page(group, week=''):
@@ -120,17 +118,19 @@ def get_schedule(message):
                          parse_mode='HTML')
 
 
-def get_current_lesson(web_page):
+def get_current_lesson(web_page, date):
+    day_num = date.weekday() + 1
     soup = BeautifulSoup(web_page, "html5lib")
 
-    for day_num in range(1, 8):
-        # Получаем таблицу с расписанием на день
-        schedule_table = soup.find("table", attrs={"id": f"{day_num}day"})
-        if schedule_table:
-            day_lessons = list(filter(lambda lesson: lesson.text, schedule_table.find_all("tr")))
-            for lesson_i, lesson in enumerate(day_lessons):
-                if 'today' in lesson.contents[0].attrs['class'][0]:
-                    return day_num, lesson_i
+    schedule_table = soup.find("table", attrs={"id": f"{day_num}day"})
+    if schedule_table:
+        day_lessons = list(filter(lambda lesson: lesson.text, schedule_table.find_all("tr")))
+        for lesson_i, lesson in enumerate(day_lessons):
+            time_start, time_end = map(
+                lambda x: datetime.datetime.strptime(x, "%H:%M").replace(date.year, date.month, date.day),
+                lesson.find('td', attrs={"class": 'time'}).span.text.split('-'))
+            if time_start <= date < time_end:
+                return day_num, lesson_i + 1
     return None, None
 
 
@@ -146,7 +146,7 @@ def get_next_lesson(web_page, day, lesson):
         # Получаем таблицу с расписанием на день
         schedule_table = soup.find("table", attrs={"id": f"{day_num}day"})
         day_lessons = list(filter(lambda l: l.text, schedule_table.find_all("tr")))
-        if day is None and lesson is None and day_lessons:  # Если занятие на следующей неделе
+        if day is None and lesson is None and day_lessons:  # Если занятие на следующий день/неделю
             return day_lessons[0]  # то выводим первое же, если в этот день есть занятия
         for lesson_i, lesson_obj in day_lessons:
             if day_num == day and lesson_i > lesson or day_num > day:
@@ -158,10 +158,10 @@ def get_near_lesson(message):
     """ Получить ближайшее занятие """
     try:
         _, group = message.text.split()
-        week, day = get_current_day(group)
+        week, date = get_current_day(group)
         web_page = get_page(group, str(week))
 
-        current_day, current_lesson = get_current_lesson(web_page)
+        current_day, current_lesson = get_current_lesson(web_page, date)
         next_lesson = get_next_lesson(web_page, current_day, current_lesson)
         if next_lesson is None:
             week = int(not bool(week - 1)) + 1
@@ -191,7 +191,8 @@ def get_tomorrow(message):
     """ Получить расписание на следующий день """
     try:
         _, group = message.text.split()
-        week, day = get_current_day(group)
+        week, date = get_current_day(group)
+        day = date.weekday() + 1
         if day == 7:
             week = int(not bool(week - 1)) + 1
             day = 1
