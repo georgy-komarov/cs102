@@ -97,18 +97,22 @@ def parse_schedule_for_day(web_page, day_num: int):
 @bot.message_handler(commands=DAYS)
 def get_schedule(message):
     """ Получить расписание на указанный день """
-    command, group, week = message.text.split()
-    day_num = DAYS.index(command.lstrip('/')) + 1
-    web_page = get_page(group, week)
-    times_lst, locations_lst, lessons_lst = \
-        parse_schedule_for_day(web_page, day_num)
-    resp = f'Расписание - {DAYS_RUSSIAN[int(day_num) - 1]} ({WEEK_RUSSIAN[int(week)]}):\n\n'
-    if any([x is not None for x in [times_lst, locations_lst, lessons_lst]]):
-        for time, location, lesson in zip(times_lst, locations_lst, lessons_lst):
-            resp += '<b>{}</b>, {}, {}\n'.format(time.strip(), location.strip(), lesson.strip())
-    else:
-        resp += f'В {DAYS_RUSSIAN[int(day_num) - 1]} ({WEEK_RUSSIAN[int(week)]}) пар нет.'
-    bot.send_message(message.chat.id, resp, parse_mode='HTML')
+    try:
+        command, group, week = message.text.split()
+        day_num = DAYS.index(command.lstrip('/')) + 1
+        web_page = get_page(group, week)
+        times_lst, locations_lst, lessons_lst = parse_schedule_for_day(web_page, day_num)
+
+        resp = f'Расписание - {DAYS_RUSSIAN[int(day_num) - 1]} ({WEEK_RUSSIAN[int(week)]}):\n\n'
+        if any([x is not None for x in [times_lst, locations_lst, lessons_lst]]):
+            for time, location, lesson in zip(times_lst, locations_lst, lessons_lst):
+                resp += '<b>{}</b>, {}, {}\n'.format(time.strip(), location.strip(), lesson.strip())
+        else:
+            resp += f'В {DAYS_RUSSIAN[int(day_num) - 1]} ({WEEK_RUSSIAN[int(week)]}) пар нет.'
+        bot.send_message(message.chat.id, resp, parse_mode='HTML')
+    except:
+        bot.send_message(message.chat.id, '<b>Номер группы не указан или такой группы не существует</b>',
+                         parse_mode='HTML')
 
 
 def get_current_lesson(web_page):
@@ -147,72 +151,84 @@ def get_next_lesson(web_page, day, lesson):
 @bot.message_handler(commands=['near'])
 def get_near_lesson(message):
     """ Получить ближайшее занятие """
-    _, group = message.text.split()
-    week, day = get_current_day(group)
-    web_page = get_page(group, str(week))
-
-    current_day, current_lesson = get_current_lesson(web_page)
-    next_lesson = get_next_lesson(web_page, current_day, current_lesson)
-    if next_lesson is None:
-        week = int(not bool(week - 1)) + 1
+    try:
+        _, group = message.text.split()
+        week, day = get_current_day(group)
         web_page = get_page(group, str(week))
-        next_lesson = get_next_lesson(web_page, None, None)
 
-    # Время проведения занятий
-    time = next_lesson.find("td", attrs={"class": "time"}).span.text.strip()
+        current_day, current_lesson = get_current_lesson(web_page)
+        next_lesson = get_next_lesson(web_page, current_day, current_lesson)
+        if next_lesson is None:
+            week = int(not bool(week - 1)) + 1
+            web_page = get_page(group, str(week))
+            next_lesson = get_next_lesson(web_page, None, None)
 
-    # Место проведения занятий
-    location = next_lesson.find("td", attrs={"class": "room"}).text.strip().split('\n\n')
-    location = ', '.join([info.strip().replace('\n', ' ').replace('\t', '') for info in location if info])
+        # Время проведения занятий
+        time = next_lesson.find("td", attrs={"class": "time"}).span.text.strip()
 
-    # Название дисциплин и имена преподавателей
-    lesson = next_lesson.find("td", attrs={"class": "lesson"}).text.strip().split('\n\n')
-    lesson = ', '.join([info.strip().replace('\n', ' ').replace('\t', '') for info in lesson if info])
+        # Место проведения занятий
+        location = next_lesson.find("td", attrs={"class": "room"}).text.strip().split('\n\n')
+        location = ', '.join([info.strip().replace('\n', ' ').replace('\t', '') for info in location if info])
 
-    resp = 'Ближайшее занятие:\n<b>{}</b>, {}, {}\n'.format(time.strip(), location.strip(), lesson.strip())
-    bot.send_message(message.chat.id, resp, parse_mode='HTML')
+        # Название дисциплин и имена преподавателей
+        lesson = next_lesson.find("td", attrs={"class": "lesson"}).text.strip().split('\n\n')
+        lesson = ', '.join([info.strip().replace('\n', ' ').replace('\t', '') for info in lesson if info])
+
+        resp = 'Ближайшее занятие:\n<b>{}</b>, {}, {}\n'.format(time.strip(), location.strip(), lesson.strip())
+        bot.send_message(message.chat.id, resp, parse_mode='HTML')
+    except:
+        bot.send_message(message.chat.id, '<b>Номер группы не указан или такой группы не существует</b>',
+                         parse_mode='HTML')
 
 
 @bot.message_handler(commands=['tomorrow'])
 def get_tomorrow(message):
     """ Получить расписание на следующий день """
-    _, group = message.text.split()
-    week, day = get_current_day(group)
-    if day == 7:
-        week = int(not bool(week - 1)) + 1
-        day = 1
-    else:
-        day += 1
+    try:
+        _, group = message.text.split()
+        week, day = get_current_day(group)
+        if day == 7:
+            week = int(not bool(week - 1)) + 1
+            day = 1
+        else:
+            day += 1
 
-    web_page = get_page(group, str(week))
-    times_lst, locations_lst, lessons_lst = \
-        parse_schedule_for_day(web_page, day)
-    resp = f'Расписание - {DAYS_RUSSIAN[int(day) - 1]} ({WEEK_RUSSIAN[week]}):\n\n'
-    if any([x is not None for x in [times_lst, locations_lst, lessons_lst]]):
-        for time, location, lesson in zip(times_lst, locations_lst, lessons_lst):
-            resp += '<b>{}</b>, {}, {}\n'.format(time.strip(), location.strip(), lesson.strip())
-    else:
-        resp += f'В {DAYS_RUSSIAN[int(day) - 1]} ({WEEK_RUSSIAN[week]}) пар нет.'
-    bot.send_message(message.chat.id, resp, parse_mode='HTML')
+        web_page = get_page(group, str(week))
+        times_lst, locations_lst, lessons_lst = \
+            parse_schedule_for_day(web_page, day)
+        resp = f'Расписание - {DAYS_RUSSIAN[int(day) - 1]} ({WEEK_RUSSIAN[week]}):\n\n'
+        if any([x is not None for x in [times_lst, locations_lst, lessons_lst]]):
+            for time, location, lesson in zip(times_lst, locations_lst, lessons_lst):
+                resp += '<b>{}</b>, {}, {}\n'.format(time.strip(), location.strip(), lesson.strip())
+        else:
+            resp += f'В {DAYS_RUSSIAN[int(day) - 1]} ({WEEK_RUSSIAN[week]}) пар нет.'
+        bot.send_message(message.chat.id, resp, parse_mode='HTML')
+    except:
+        bot.send_message(message.chat.id, '<b>Номер группы не указан или такой группы не существует</b>',
+                         parse_mode='HTML')
 
 
 @bot.message_handler(commands=['all'])
 def get_all_schedule(message):
     """ Получить расписание на всю неделю для указанной группы """
-    command, group, week = message.text.split()
-    web_page = get_page(group, week)
-    resp = f'Расписание ({WEEK_RUSSIAN[int(week)]}):\n\n'
-    for day in range(1, 8):
-        times_lst, locations_lst, lessons_lst = \
-            parse_schedule_for_day(web_page, day)
-        resp += f'{DAYS_RUSSIAN[int(day) - 1].capitalize()}:\n'
-        if any([x is not None for x in [times_lst, locations_lst, lessons_lst]]):
-            for time, location, lesson in zip(times_lst, locations_lst, lessons_lst):
-                resp += '<b>{}</b>, {}, {}\n'.format(time.strip(), location.strip(), lesson.strip())
-        else:
-            resp += f'Пар нет.\n'
-        resp += '\n'
-    bot.send_message(message.chat.id, resp, parse_mode='HTML')
+    try:
+        command, group, week = message.text.split()
+        web_page = get_page(group, week)
+        resp = f'Расписание ({WEEK_RUSSIAN[int(week)]}):\n\n'
+        for day in range(1, 8):
+            times_lst, locations_lst, lessons_lst = \
+                parse_schedule_for_day(web_page, day)
+            resp += f'{DAYS_RUSSIAN[int(day) - 1].capitalize()}:\n'
+            if any([x is not None for x in [times_lst, locations_lst, lessons_lst]]):
+                for time, location, lesson in zip(times_lst, locations_lst, lessons_lst):
+                    resp += '<b>{}</b>, {}, {}\n'.format(time.strip(), location.strip(), lesson.strip())
+            else:
+                resp += f'Пар нет.\n'
+            resp += '\n'
+        bot.send_message(message.chat.id, resp, parse_mode='HTML')
+    except:
+        bot.send_message(message.chat.id, '<b>Номер группы не указан или такой группы не существует</b>',
+                         parse_mode='HTML')
 
 
 if __name__ == '__main__':
