@@ -1,9 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math"
+	"math/rand"
 	"path/filepath"
+	"sort"
+	"time"
 )
 
 func readSudoku(filename string) ([][]byte, error) {
@@ -35,23 +40,52 @@ func display(grid [][]byte) {
 }
 
 func group(values []byte, n int) [][]byte {
-	// PUT YOUR CODE HERE
+	var result [][]byte
+
+	for i := 0; i < len(values); i += n {
+		result = append(result, values[i:i+n])
+	}
+
+	return result
 }
 
 func getRow(grid [][]byte, row int) []byte {
-	// PUT YOUR CODE HERE
+	return grid[row]
 }
 
 func getCol(grid [][]byte, col int) []byte {
-	// PUT YOUR CODE HERE
+	var result []byte
+
+	for _, row := range grid {
+		result = append(result, row[col])
+	}
+
+	return result
 }
 
 func getBlock(grid [][]byte, row int, col int) []byte {
-	// PUT YOUR CODE HERE
+	var result []byte
+
+	row3 := row / 3 * 3
+	col3 := col / 3 * 3
+
+	for row := row3; row < row3+3; row++ {
+		for col := col3; col < col3+3; col++ {
+			result = append(result, grid[row][col])
+		}
+	}
+	return result
 }
 
 func findEmptyPosition(grid [][]byte) (int, int) {
-	// PUT YOUR CODE HERE
+	for y, row := range grid {
+		for x, el := range row {
+			if el == '.' {
+				return y, x
+			}
+		}
+	}
+	return -1, -1
 }
 
 func contains(values []byte, search byte) bool {
@@ -63,20 +97,142 @@ func contains(values []byte, search byte) bool {
 	return false
 }
 
+func remove(values []byte, item byte) []byte {
+	pos := bytes.IndexByte(values, item)
+	return append(values[:pos], values[pos+1:]...)
+}
+
 func findPossibleValues(grid [][]byte, row int, col int) []byte {
-	// PUT YOUR CODE HERE
+	digits := make([]byte, 0, 9)
+
+	for i := '1'; i <= '9'; i++ {
+		digits = append(digits, byte(i))
+	}
+
+	for _, digit := range getRow(grid, row) {
+		if digit != '.' && contains(digits, digit) {
+			digits = remove(digits, digit)
+		}
+	}
+
+	for _, digit := range getCol(grid, col) {
+		if digit != '.' && contains(digits, digit) {
+			digits = remove(digits, digit)
+		}
+	}
+
+	for _, digit := range getBlock(grid, row, col) {
+		if digit != '.' && contains(digits, digit) {
+			digits = remove(digits, digit)
+		}
+	}
+
+	sort.Slice(digits, func(i, j int) bool {
+		return digits[i] < digits[j]
+	})
+
+	return digits
 }
 
 func solve(grid [][]byte) ([][]byte, bool) {
-	// PUT YOUR CODE HERE
+	row, col := findEmptyPosition(grid)
+	if row == -1 && col == -1 { // Всё решено?
+		return grid, true
+	}
+
+	values := findPossibleValues(grid, row, col)
+	for _, value := range values {
+		grid[row][col] = value
+		newResult, result := solve(grid)
+		if result { // Есть прогресс?
+			return newResult, true
+		}
+		grid[row][col] = byte('.')
+	}
+	return grid, false
+}
+
+func checkCorrect(array []byte) bool {
+	digits := make([]byte, 0, 9)
+	for i := '1'; i <= '9'; i++ {
+		digits = append(digits, byte(i))
+	}
+
+	arrayS := make([]byte, 9, 9)
+	copy(arrayS, array)
+	sort.Slice(arrayS, func(i, j int) bool {
+		return arrayS[i] < arrayS[j]
+	})
+
+	for i := 0; i < len(digits); i++ {
+		if digits[i] != arrayS[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func checkSolution(grid [][]byte) bool {
-	// PUT YOUR CODE HERE
+	for _, row := range grid {
+		if !checkCorrect(row) {
+			return false
+		}
+	}
+
+	for i := range grid {
+		if !checkCorrect(getCol(grid, i)) {
+			return false
+		}
+	}
+
+	for _, i := range []int{0, 3, 6} {
+		for _, j := range []int{0, 3, 6} {
+			if !checkCorrect(getBlock(grid, i, j)) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func generateSudoku(N int) [][]byte {
-	// PUT YOUR CODE HERE
+	// Initialize random
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	dotsToFill := int(81 - math.Min(float64(N), 81))
+
+	emptyGrid := make([][]byte, 9, 9)
+	for i := 0; i < 9; i++ {
+		emptyGrid[i] = make([]byte, 9, 9)
+		for j := 0; j < 9; j++ {
+			emptyGrid[i][j] = byte('.')
+		}
+	}
+
+	// To generate random Sudoku every time
+	dotsToRemove := int(math.Min(float64(dotsToFill), float64(rand.Intn(10)+5)))
+	for dotsToRemove > 0 {
+		randomX, randomY := rand.Intn(9), rand.Intn(9)
+
+		if emptyGrid[randomY][randomX] == '.' {
+			values := findPossibleValues(emptyGrid, randomY, randomX)
+			emptyGrid[randomY][randomX] = values[rand.Intn(len(values))]
+
+			dotsToRemove -= 1
+		}
+	}
+
+	newGrid, _ := solve(emptyGrid)
+
+	for dotsToFill > 0 {
+		randomX, randomY := rand.Intn(9), rand.Intn(9)
+		if newGrid[randomY][randomX] == '.' {
+			continue
+		}
+		newGrid[randomY][randomX] = '.'
+		dotsToFill -= 1
+	}
+	return newGrid
 }
 
 func main() {
