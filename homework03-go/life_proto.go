@@ -9,7 +9,6 @@ import (
 )
 
 type GameOfLife struct {
-	screen     *ebiten.Image
 	width      int
 	height     int
 	cellSize   int
