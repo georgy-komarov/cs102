@@ -3,31 +3,32 @@ package life
 import (
 	"bytes"
 	"io/ioutil"
-	math2 "math"
+	"math"
 	"math/rand"
 	"time"
 )
 
 type GameOfLife struct {
-	rows               int
-	cols               int
+	Rows               int
+	Cols               int
 	maxGenerations     float64
-	nGeneration        int
+	NGeneration        int
 	previousGeneration [][]bool
-	currentGeneration  [][]bool
+	CurrentGeneration  [][]bool
 }
 
-func (game *GameOfLife) init(rows, cols int, maxGenerations float64) {
-	game.rows = rows
-	game.cols = cols
+func (game *GameOfLife) Init(rows, cols int, maxGenerations float64) {
+	game.Rows = rows
+	game.Cols = cols
 	game.maxGenerations = maxGenerations
-	game.currentGeneration = game.createGrid(true)
+	game.previousGeneration = game.createGrid(false)
+	game.CurrentGeneration = game.createGrid(true)
 }
 
 func (game *GameOfLife) createGrid(randomize bool) [][]bool {
-	grid := make([][]bool, game.rows, game.cols)
+	grid := make([][]bool, game.Rows, game.Rows)
 	for i := range grid {
-		grid[i] = make([]bool, game.cols, game.cols)
+		grid[i] = make([]bool, game.Cols, game.Cols)
 	}
 
 	if randomize {
@@ -48,10 +49,10 @@ func (game *GameOfLife) getNeighboursCount(x, y int) int {
 				continue
 			}
 			x1, y1 := x+i, y+j
-			if x1 < 0 || y1 < 0 || game.cols <= x1 || game.rows <= y1 { // Проверяем границы
+			if x1 < 0 || y1 < 0 || game.Cols <= x1 || game.Rows <= y1 { // Проверяем границы
 				continue
 			}
-			if game.currentGeneration[y1][x1] {
+			if game.CurrentGeneration[y1][x1] {
 				count++
 			}
 		}
@@ -61,12 +62,12 @@ func (game *GameOfLife) getNeighboursCount(x, y int) int {
 
 func (game *GameOfLife) getNextGeneration() [][]bool {
 	nextGrid := game.createGrid(false)
-	for y := 0; y < game.rows; y++ {
-		for x := 0; x < game.cols; x++ {
+	for y := 0; y < game.Rows; y++ {
+		for x := 0; x < game.Cols; x++ {
 			neighbourNum := game.getNeighboursCount(x, y)
-			if !game.currentGeneration[y][x] && neighbourNum == 3 {
+			if !game.CurrentGeneration[y][x] && neighbourNum == 3 {
 				nextGrid[y][x] = true
-			} else if game.currentGeneration[y][x] && (neighbourNum == 2 || neighbourNum == 3) {
+			} else if game.CurrentGeneration[y][x] && (neighbourNum == 2 || neighbourNum == 3) {
 				nextGrid[y][x] = true
 			}
 		}
@@ -74,30 +75,33 @@ func (game *GameOfLife) getNextGeneration() [][]bool {
 	return nextGrid
 }
 
-func (game *GameOfLife) isMaxGenerationsExceed() bool {
-	return float64(game.nGeneration) >= game.maxGenerations
+func (game *GameOfLife) IsMaxGenerationsExceed() bool {
+	if game.maxGenerations == math.Inf(0) {
+		return false
+	}
+	return float64(game.NGeneration) >= game.maxGenerations
 }
 
-func (game *GameOfLife) isChanging() bool {
-	for y := 0; y < game.rows; y++ {
-		for x := 0; x < game.cols; x++ {
-			if game.currentGeneration[y][x] != game.previousGeneration[y][x] {
-				return false
+func (game *GameOfLife) IsChanging() bool {
+	for y := 0; y < game.Rows; y++ {
+		for x := 0; x < game.Cols; x++ {
+			if game.CurrentGeneration[y][x] != game.previousGeneration[y][x] {
+				return true
 			}
 		}
 	}
-	return true
+	return false
 }
 
-func (game *GameOfLife) step() {
-	if !game.isMaxGenerationsExceed() && game.isChanging() {
-		game.previousGeneration = game.currentGeneration
-		game.currentGeneration = game.getNextGeneration()
-		game.nGeneration += 1
+func (game *GameOfLife) Step() {
+	if !game.IsMaxGenerationsExceed() && game.IsChanging() {
+		game.previousGeneration = game.CurrentGeneration
+		game.CurrentGeneration = game.getNextGeneration()
+		game.NGeneration += 1
 	}
 }
 
-func fromFile(filename string) *GameOfLife {
+func (game *GameOfLife) FromFile(filename string) *GameOfLife {
 	file, _ := ioutil.ReadFile(filename)
 	lines := bytes.Split(bytes.Trim(bytes.ReplaceAll(file, []byte("\r\n"), []byte("\n")), "\n"), []byte("\n"))
 	grid := make([][]bool, len(lines))
@@ -107,9 +111,8 @@ func fromFile(filename string) *GameOfLife {
 			grid[i][j] = cell != byte('0')
 		}
 	}
-	game := &GameOfLife{}
-	game.init(len(grid), len(grid[0]), math2.Inf(1))
-	game.currentGeneration = grid
+	game.Init(len(grid), len(grid[0]), math.Inf(1))
+	game.CurrentGeneration = grid
 	return game
 }
 
