@@ -19,12 +19,12 @@ func GetUpdatesChannel(token, proxy string) tgbotapi.UpdatesChannel {
 
 	// Init new Bot (with proxy)
 	if proxy != "" {
-		proxyUrl, _ := url.Parse(Proxy)
+		proxyUrl, _ := url.Parse(proxy)
 		proxyClient := http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}}
 
-		Bot, err = tgbotapi.NewBotAPIWithClient(Token, &proxyClient)
+		Bot, err = tgbotapi.NewBotAPIWithClient(token, &proxyClient)
 	} else {
-		Bot, err = tgbotapi.NewBotAPI(Token)
+		Bot, err = tgbotapi.NewBotAPI(token)
 	}
 	if err != nil {
 		log.Fatal(err)
