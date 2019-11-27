@@ -6,6 +6,7 @@ import (
 	"github.com/anaskhan96/soup"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"strings"
+	"time"
 )
 
 var days = []string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
@@ -44,12 +45,27 @@ func zip(slices ...[]string) ([][]string, error) {
 	return r, nil
 }
 
+func getCurrentDate(group string) (string, time.Time) {
+	var scheduleWeek string
+	webPage := getPage(group, "0")
+	html := soup.HTMLParse(webPage)
+
+	weekText := html.Find("h2", "class", "schedule-week").FullText()
+	weekTextLower := strings.ToLower(weekText)
+	if strings.Contains(weekTextLower, "нечетная") {
+		scheduleWeek = "2"
+	} else {
+		scheduleWeek = "1"
+	}
+	date := time.Now()
+	return scheduleWeek, date
+}
+
 func getPage(group, week string) string {
 	if week != "" {
 		week = week + "/"
 	}
 	url := fmt.Sprintf("%[1]s/%[2]s/%[3]sraspisanie_zanyatiy_%[2]s.htm", Domain, group, week)
-	fmt.Println(url)
 	if val, ok := cache[url]; ok {
 		return val
 	} else {
@@ -60,6 +76,66 @@ func getPage(group, week string) string {
 			cache[url] = body
 		}
 		return body
+	}
+}
+
+func parseScheduleForDay(page string, num int) ([]string, []string, []string) {
+	html := soup.HTMLParse(page)
+	scheduleTable := html.Find("table", "id", fmt.Sprintf("%dday", num))
+	if scheduleTable.Error == nil {
+		var (
+			timesList     []string
+			locationsList []string
+			lessonsList   []string
+		)
+		// Время проведения занятий
+		times := scheduleTable.FindAll("td", "class", "time")
+		for _, time_ := range times {
+			timesList = append(timesList, strings.TrimSpace(time_.Find("span").Text()))
+		}
+
+		locations := scheduleTable.FindAll("td", "class", "room")
+		for _, location := range locations {
+			room := strings.TrimSpace(location.Find("dd").Text())
+			building := strings.TrimSpace(location.Find("span").Text())
+			locationAll := strings.TrimSpace(fmt.Sprintf("%s %s", building, room))
+			locationsList = append(locationsList, locationAll)
+		}
+
+		// Название дисциплин и имена преподавателей
+		lessons := scheduleTable.FindAll("td", "class", "lesson")
+		for _, lesson := range lessons {
+			lessonName := strings.TrimSpace(lesson.Find("dd").Text())
+			teacher := strings.TrimSpace(lesson.Find("b").Text())
+			lessonAll := strings.TrimSpace(fmt.Sprintf("%s %s", lessonName, teacher))
+			lessonsList = append(lessonsList, lessonAll)
+		}
+
+		return timesList, locationsList, lessonsList
+	}
+	return nil, nil, nil
+}
+
+func getDayScheduleText(group, week string, day int) string {
+	webPage := getPage(group, week)
+	if webPage == "" {
+		return "Ошибка получения расписания!"
+	} else {
+		times, locations, lessons := parseScheduleForDay(webPage, day)
+		if times != nil && locations != nil && lessons != nil {
+			timetable, err := zip(times, locations, lessons)
+			if err != nil {
+				return "Ошибка парсинга расписания!"
+			} else {
+				var msg string
+				for i := range timetable {
+					msg += fmt.Sprintf("<b>%s</b>; %s; %s\n", times[i], locations[i], lessons[i])
+				}
+				return msg
+			}
+		} else {
+			return "В этот день пар нет."
+		}
 	}
 }
 
@@ -96,24 +172,7 @@ func GetSchedule(update *tgbotapi.Update) {
 		command, group, week := text[0], text[1], text[2]
 		if len(group) == 5 && (week == "0" || week == "1" || week == "2") {
 			dayNum := index(days, command[1:]) + 1
-			webPage := getPage(group, week)
-			if webPage == "" {
-				msg = "Ошибка получения расписания!"
-			} else {
-				times, locations, lessons := parseScheduleForDay(webPage, dayNum)
-				if times != nil && locations != nil && lessons != nil {
-					timetable, err := zip(times, locations, lessons)
-					if err != nil {
-						msg = "Ошибка парсинга расписания!"
-					} else {
-						for i := range timetable {
-							msg += fmt.Sprintf("<b>%s</b>; %s; %s\n", times[i], locations[i], lessons[i])
-						}
-					}
-				} else {
-					msg = "В этот день пар нет."
-				}
-			}
+			msg = getDayScheduleText(group, week, dayNum)
 		}
 	}
 	tgmsg := tgbotapi.NewMessage(update.Message.Chat.ID, msg)
@@ -121,41 +180,34 @@ func GetSchedule(update *tgbotapi.Update) {
 	_, _ = Bot.Send(tgmsg)
 }
 
-func parseScheduleForDay(page string, num int) ([]string, []string, []string) {
-	html := soup.HTMLParse(page)
-	scheduleTable := html.Find("table", "id", fmt.Sprintf("%dday", num))
-	if scheduleTable.Error == nil {
-		var (
-			timesList     []string
-			locationsList []string
-			lessonsList   []string
-		)
-		// Время проведения занятий
-		times := scheduleTable.FindAll("td", "class", "time")
-		for _, time := range times {
-			timesList = append(timesList, strings.TrimSpace(time.Find("span").Text()))
+func GetTomorrow(update *tgbotapi.Update) {
+	var msg string
+	text := strings.Fields(update.Message.Text)
+	if len(text) != 2 {
+		msg = "Некорректный ввод!"
+	} else {
+		group := text[1]
+		if len(group) != 5 {
+			msg = "Неверный номер группы!"
+		} else {
+			week, today := getCurrentDate(group)
+			dayNum := int(today.Weekday())
+			if dayNum == 7 {
+				dayNum = 1
+				if week == "1" {
+					week = "2"
+				} else {
+					week = "1"
+				}
+			} else {
+				dayNum += 1
+			}
+			msg = getDayScheduleText(group, week, dayNum)
 		}
-
-		locations := scheduleTable.FindAll("td", "class", "room")
-		for _, location := range locations {
-			room := strings.TrimSpace(location.Find("dd").Text())
-			building := strings.TrimSpace(location.Find("span").Text())
-			locationAll := strings.TrimSpace(fmt.Sprintf("%s %s", building, room))
-			locationsList = append(locationsList, locationAll)
-		}
-
-		// Название дисциплин и имена преподавателей
-		lessons := scheduleTable.FindAll("td", "class", "lesson")
-		for _, lesson := range lessons {
-			lessonName := strings.TrimSpace(lesson.Find("dd").Text())
-			teacher := strings.TrimSpace(lesson.Find("b").Text())
-			lessonAll := strings.TrimSpace(fmt.Sprintf("%s %s", lessonName, teacher))
-			lessonsList = append(lessonsList, lessonAll)
-		}
-
-		return timesList, locationsList, lessonsList
 	}
-	return nil, nil, nil
+	tgmsg := tgbotapi.NewMessage(update.Message.Chat.ID, msg)
+	tgmsg.ParseMode = "HTML"
+	_, _ = Bot.Send(tgmsg)
 }
 
 func main() {
@@ -171,6 +223,9 @@ func main() {
 		}
 		if IsCommand(update, days...) {
 			go GetSchedule(update)
+		}
+		if IsCommand(update, "tomorrow") {
+			go GetTomorrow(update)
 		}
 	}
 }
