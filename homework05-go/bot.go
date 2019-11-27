@@ -46,9 +46,9 @@ func zip(slices ...[]string) ([][]string, error) {
 	return r, nil
 }
 
-func getCurrentDate(group string) (string, time.Time) {
+func getCurrentDate() (string, time.Time) {
 	var scheduleWeek string
-	webPage, _ := getPage(group, "0")
+	webPage, _ := getPage("M3139", "0")
 	html := soup.HTMLParse(webPage)
 
 	weekText := html.Find("h2", "class", "schedule-week").FullText()
@@ -70,7 +70,11 @@ func getPage(group, week string) (string, error) {
 	if val, ok := cache[url]; ok {
 		return val, nil
 	} else {
-		return soup.Get(url)
+		body, err := soup.Get(url)
+		if err == nil {
+			cache[url] = body
+		}
+		return body, err
 	}
 }
 
@@ -188,7 +192,7 @@ func GetTomorrow(update *tgbotapi.Update) {
 		if len(group) != 5 {
 			msg = "Неверный номер группы!"
 		} else {
-			week, today := getCurrentDate(group)
+			week, today := getCurrentDate()
 			dayNum := int(today.Weekday())
 			if dayNum == 7 {
 				dayNum = 1
@@ -239,6 +243,71 @@ func GetAll(update *tgbotapi.Update) {
 	_, _ = Bot.Send(tgmsg)
 }
 
+func GetNear(update *tgbotapi.Update) {
+	var msg string
+	text := strings.Fields(update.Message.Text)
+	if len(text) != 2 {
+		msg = "Некорректный ввод!"
+	} else {
+		group := text[1]
+		if len(group) != 5 {
+			msg = "Неверный номер группы!"
+		} else {
+			week, today := getCurrentDate()
+			msg = getNextLesson(group, week, today)
+		}
+	}
+	tgmsg := tgbotapi.NewMessage(update.Message.Chat.ID, msg)
+	tgmsg.ParseMode = "HTML"
+	_, _ = Bot.Send(tgmsg)
+}
+
+func getNextLesson(group, week string, day time.Time) string {
+	webPage, err := getPage(group, week)
+	if err != nil {
+		return "Ошибка загрузки страницы!"
+	} else {
+		timesList, locationsList, lessonsList := parseScheduleForDay(webPage, int(day.Weekday()))
+		for i, times := range timesList {
+			timesSplit := strings.Split(times, "-")
+			timeStart, _ := time.Parse("15:04", timesSplit[0])
+			timeEnd, _ := time.Parse("15:04", timesSplit[1])
+
+			if day.Sub(timeStart) >= 0 && day.Sub(timeEnd) <= 0 {
+				if i != len(timesList)-1 {
+					return fmt.Sprintf("Следующее занятие:\n<b>%s</b>; %s; %s", timesList[i+1], locationsList[i+1], lessonsList[i+1])
+				}
+				break // No further lessons today
+			}
+		}
+		// Find next lesson this week
+		for dayN := int(day.Weekday()) + 1; dayN <= 7; dayN++ {
+			timesList, locationsList, lessonsList := parseScheduleForDay(webPage, dayN)
+			if len(timesList) != 0 && len(locationsList) != 0 && len(lessonsList) != 0 {
+				return fmt.Sprintf("Следующее занятие:\n<b>%s</b>; %s; %s", timesList[0], locationsList[0], lessonsList[0])
+			}
+		}
+		// Find lesson next week
+		if week == "1" {
+			week = "2"
+		} else {
+			week = "1"
+		}
+		webPage, err := getPage(group, week)
+		if err != nil {
+			return "Ошибка загрузки страницы!"
+		} else {
+			for dayN := 0; dayN <= 7; dayN++ {
+				timesList, locationsList, lessonsList := parseScheduleForDay(webPage, dayN)
+				if len(timesList) != 0 && len(locationsList) != 0 && len(lessonsList) != 0 {
+					return fmt.Sprintf("<b>%s</b>; %s; %s", timesList[0], locationsList[0], lessonsList[0])
+				}
+			}
+		}
+		return "Следующее занятие не найдено. Возможно такой группы не существует!"
+	}
+}
+
 func main() {
 	updates := GetUpdatesChannel(Token, Proxy)
 	for updateObject := range updates {
@@ -258,6 +327,9 @@ func main() {
 		}
 		if IsCommand(update, "all") {
 			go GetAll(update)
+		}
+		if IsCommand(update, "near") {
+			go GetNear(update)
 		}
 	}
 }
