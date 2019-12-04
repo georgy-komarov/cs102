@@ -1,4 +1,5 @@
-from typing import List, Optional
+from typing import Optional, Dict
+
 from pydantic import BaseModel
 
 
@@ -18,4 +19,7 @@ class User(BaseUser):
 
 class Message(BaseModel):
     """ Модель сообщения """
-    # PUT YOUR CODE HERE
+    date: int
+    from_id: int
+    id: int
+    text: str

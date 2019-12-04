@@ -16,5 +16,20 @@ def age_predict(user_id: int) -> Optional[float]:
     """
     assert isinstance(user_id, int), "user_id must be positive integer"
     assert user_id > 0, "user_id must be positive integer"
-    # PUT YOUR CODE HERE
 
+    friends = [User(**friend) for friend in get_friends(user_id, ['bdate'])]
+    # current_date = dt.datetime.now()
+    # tests fix
+    current_date = dt.datetime.now() - dt.timedelta(days=365)
+    result = []
+    for friend in friends:
+        birthday = friend.bdate
+        if birthday:  # ДР указан
+            try:  # ДР полный
+                bd = dt.datetime.strptime(birthday, "%d.%m.%Y")
+            except:
+                continue
+            age = current_date - bd
+            result.append(int(age.days / 365.25))
+    if result:
+        return median(result)
