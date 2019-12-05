@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from pydantic import BaseModel
 
@@ -22,4 +22,13 @@ class Message(BaseModel):
     date: int
     from_id: int
     id: int
+    out: int
+    peer_id: int
     text: str
+    conversation_message_id: int
+    fwd_messages: Optional[List]
+    important: bool
+    random_id: int
+    attachments: Optional[List]
+    is_hidden: bool
+    reply_message: Optional[Dict]

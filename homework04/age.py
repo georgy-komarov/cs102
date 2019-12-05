@@ -17,7 +17,7 @@ def age_predict(user_id: int) -> Optional[float]:
     assert isinstance(user_id, int), "user_id must be positive integer"
     assert user_id > 0, "user_id must be positive integer"
 
-    friends = [User(**friend) for friend in get_friends(user_id, ['bdate'])]
+    friends = [User(**friend) for friend in get_friends(user_id, 'bdate')]
     # current_date = dt.datetime.now()
     # tests fix
     current_date = dt.datetime.now() - dt.timedelta(days=365)

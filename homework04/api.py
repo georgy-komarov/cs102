@@ -4,6 +4,7 @@ from typing import List, Dict
 import requests
 
 import config
+from api_models import Message
 
 
 def get(url: str, params: dict = None, timeout: int = 5, max_retries: int = 5,
@@ -26,7 +27,7 @@ def get(url: str, params: dict = None, timeout: int = 5, max_retries: int = 5,
             time.sleep(backoff_factor * (2 ** retry))
 
 
-def get_friends(user_id: int, fields: List[str]) -> Dict:
+def get_friends(user_id: int, fields: str = '') -> Dict:
     """ Вернуть данных о друзьях пользователя
 
     :param user_id: идентификатор пользователя, список друзей которого нужно получить
@@ -72,4 +73,5 @@ def messages_get_history(user_id: int, offset: int = 0, count: int = 20) -> List
             result.extend(messages)
 
         params["offset"] += 200
-    return result
+
+    return [Message(**msg) for msg in result]
