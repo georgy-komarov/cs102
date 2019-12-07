@@ -32,7 +32,7 @@ func Get(url string, params url.Values, timeout, maxRetries int, backoffFactor f
 	return nil, nil
 }
 
-func getFriends(userId int, fields string) interface{} {
+func getFriends(userId int, fields string) FriendsResponse {
 	params := url.Values{}
 	params.Add("user_id", strconv.Itoa(userId))
 	params.Add("fields", fields)
@@ -44,5 +44,8 @@ func getFriends(userId int, fields string) interface{} {
 
 	var jsonMap map[string]interface{}
 	_ = json.Unmarshal(body, &jsonMap)
-	return jsonMap
+
+	var respJSON FriendsResponse
+	_ = json.Unmarshal(body, &respJSON)
+	return respJSON
 }

@@ -1,12 +1,12 @@
 package main
 
 type User struct {
-	id          int
-	firstName   string
-	lastName    string
-	online      int
-	deactivated string
-	bdate       string
+	Id          int
+	First_name  string
+	Last_name   string
+	Online      int
+	Deactivated string
+	Bdate       string
 }
 
 type Message struct {
@@ -16,4 +16,13 @@ type Message struct {
 	out    int
 	peerId int
 	text   string
+}
+
+type Response struct {
+	Items []User
+	Count float64
+}
+
+type FriendsResponse struct {
+	Response Response
 }
