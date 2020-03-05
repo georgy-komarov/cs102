@@ -1,19 +1,20 @@
 import os
 
 import bottle
-from bottle import route, run, template, redirect
+from bottle import route, run, template, redirect, request
 
 from db import *
+from scraputils import get_news
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-@route('/')
 @route('/hello/<name>')
 def index(name="Stranger"):
     return template('hello_template', name=name)
 
 
+@route('/')
 @route('/news')
 def news_list():
     s = session()
@@ -23,21 +24,37 @@ def news_list():
 
 @route('/add_label')
 def add_label():
-    # 1. Получить значения параметров label и id из GET-запроса
-    # 2. Получить запись из БД с соответствующим id (такая запись только одна!)
-    # 3. Изменить значение метки записи на значение label
-    # 4. Сохранить результат в БД
+    news_id = request.query['id']
+    label = request.query['label']
+
+    s = session()
+    new = s.query(News).get(news_id)
+    new.label = label
+    s.commit()
+
     redirect('/news')
 
 
-@route('/update_news')
-def update_news():
-    # 1. Получить данные с новостного сайта
-    # 2. Проверить, каких новостей еще нет в БД. Будем считать,
-    #    что каждая новость может быть уникально идентифицирована
-    #    по совокупности двух значений: заголовка и автора
-    # 3. Сохранить в БД те новости, которых там нет
-    redirect('/news')
+@route('/update_news/<pages>')
+def update_news(pages=1):
+    news_list = get_news('https://news.ycombinator.com/newest', n_pages=pages)
+
+    s = session()
+    for news_item in news_list:
+        news_item_filter = s.query(News).filter(
+            News.title == news_item["title"],
+            News.author == news_item["author"]).first()
+
+        if news_item_filter is None:
+            news = News(title=news_item["title"],
+                        author=news_item["author"],
+                        url=news_item["url"],
+                        comments=news_item["comments"],
+                        points=news_item["points"])
+            s.add(news)
+    s.commit()
+
+    redirect("/news")
 
 
 @route("/classify")
