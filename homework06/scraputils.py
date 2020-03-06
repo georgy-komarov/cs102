@@ -1,3 +1,5 @@
+from time import sleep
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -44,7 +46,8 @@ def extract_news(parser):
 
 def extract_next_page(parser):
     """ Extract next page URL """
-    return parser.find('a', {"class": "morelink"})["href"]
+    link = parser.find('a', {"class": "morelink"})
+    return link["href"] if link is not None else None
 
 
 def get_news(url, n_pages=1):
@@ -56,9 +59,12 @@ def get_news(url, n_pages=1):
         soup = BeautifulSoup(response.text, "html.parser")
         news_list = extract_news(soup)
         next_page = extract_next_page(soup)
-        url = "https://news.ycombinator.com/" + next_page
         news.extend(news_list)
+        if next_page is None:
+            return news
+        url = "https://news.ycombinator.com/" + next_page
         n_pages -= 1
+        sleep(5)
     return news
 
 
