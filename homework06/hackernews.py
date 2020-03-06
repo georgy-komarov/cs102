@@ -73,6 +73,8 @@ def classify_news():
 
     clf.fit(X, y)
 
+    return redirect('/news')
+
 
 @route('/recommendations')
 def recommendations():
@@ -81,7 +83,7 @@ def recommendations():
     labels = clf.predict([new.title for new in classified_news])
 
     for row, label in zip(classified_news, labels):
-        row['label'] = label
+        row.label = label
 
     return template('news_recommendations', rows=classified_news)
 
