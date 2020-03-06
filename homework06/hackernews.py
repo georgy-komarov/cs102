@@ -3,6 +3,7 @@ import os
 import bottle
 from bottle import route, run, template, redirect, request
 
+from bayes import NaiveBayesClassifier
 from db import *
 from scraputils import get_news
 
@@ -59,10 +60,33 @@ def update_news(pages=1):
 
 @route("/classify")
 def classify_news():
-    # PUT YOUR CODE HERE
-    redirect("/news")
+    s = session()
+
+    news = s.query(News).filter(News.label is not None).all()
+
+    X = []
+    y = []
+
+    for element in news:
+        X.append(element.title)
+        y.append(element.label)
+
+    clf.fit(X, y)
+
+
+@route('/recommendations')
+def recommendations():
+    classified_news = session().query(News).filter(News.label is None).all()
+
+    labels = clf.predict([new.title for new in classified_news])
+
+    for row, label in zip(classified_news, labels):
+        row['label'] = label
+
+    return template('news_recommendations', rows=classified_news)
 
 
 if __name__ == '__main__':
     bottle.TEMPLATE_PATH.insert(0, os.path.join(PROJECT_DIR, 'templates'))
+    clf = NaiveBayesClassifier()
     run(host='localhost', port=8080)
