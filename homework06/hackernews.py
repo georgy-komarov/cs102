@@ -62,7 +62,7 @@ def update_news(pages=1):
 def classify_news():
     s = session()
 
-    news = s.query(News).filter(News.label is not None).all()
+    news = s.query(News).filter(News.label != None).all()
 
     X = []
     y = []
@@ -76,7 +76,7 @@ def classify_news():
 
 @route('/recommendations')
 def recommendations():
-    classified_news = session().query(News).filter(News.label is None).all()
+    classified_news = session().query(News).filter(News.label == None).all()
 
     labels = clf.predict([new.title for new in classified_news])
 
