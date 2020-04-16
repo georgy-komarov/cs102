@@ -53,7 +53,7 @@ class AsyncServer(asyncore.dispatcher):
         AsyncHTTPRequestHandler(sock)
 
     def serve_forever(self):
-        pass
+        asyncore.loop()
 
 
 class AsyncHTTPRequestHandler(asynchat.async_chat):
@@ -61,30 +61,75 @@ class AsyncHTTPRequestHandler(asynchat.async_chat):
         super().__init__(sock)
         self.set_terminator(b'\r\n\r\n')
 
+        self.method = ''
+        self.urn = ''
+        self.protocol = ''
+        self.headers = {}
+        self.content = ''
+
     def collect_incoming_data(self, data):
         log.debug(f'Incoming data: {data}')
         self._collect_incoming_data(data)
 
     def found_terminator(self):
-        pass
+        self.parse_request()
 
     def parse_request(self):
-        pass
+        if not self.headers:
+            try:
+                self.parse_headers()
+            except:
+                pass
+            if not self.headers:
+                self.send_error(400)
+                self.handle_close()
+            if self.method == 'POST':
+                if (content_length := self.headers.get('content-length')) > 0:
+                    self.set_terminator(int(content_length))
+                else:
+                    self.handle_request()
+            else:
+                self.handle_request()
+        else:
+            self.handle_request()
 
     def parse_headers(self):
-        pass
+        headers = b''.join(self.incoming).decode().split('\r\n')
+        log.debug('Got headers, parsing...')
+
+        proto_line, headers_lines = headers[0], headers[1:]
+        method, urn, protocol = proto_line.split()
+        log.debug(f'{method}, {urn}, {protocol}')
+        log.debug(headers_lines)
+
+        self.method, self.urn, self.protocol = method, urn, protocol
+
+        headers_dict = {}
+        for header in headers_lines:
+            if header:
+                name, value = map(lambda h: h.strip(), header.split(':', maxsplit=1))
+                name = name.lower()  # According to RFC2616 Section 4.2, field names are case-insensitive
+                headers_dict[name] = value
+                log.debug(f'{name}: {value}')
+        if (header := 'host') in headers_dict:
+            headers_dict[header] = headers_dict[header].lower()  # According to RFC2616 Section 3.2.3
+        if (header := 'content-length') in headers_dict:
+            headers_dict[header] = int(headers_dict[header])
+
+        self.headers = headers_dict
+        log.debug('Headers parsing completed successfully!')
 
     def handle_request(self):
         method_name = 'do_' + self.method
         if not hasattr(self, method_name):
             self.send_error(405)
-            self.handle_close()
-            return
-        handler = getattr(self, method_name)
-        handler()
+        else:
+            handler = getattr(self, method_name)
+            handler()
+        self.handle_close()
 
     def send_header(self, keyword, value):
-        pass
+        self.push(f'{keyword}: {value}\r\n'.encode())
 
     def send_error(self, code, message=None):
         try:
@@ -99,11 +144,11 @@ class AsyncHTTPRequestHandler(asynchat.async_chat):
         self.send_header('Connection', 'close')
         self.end_headers()
 
-    def send_response(self, code, message=None):
-        pass
+    def send_response(self, code=200, message='OK'):
+        self.push(f'HTTP/1.1 {code} {message}\r\n'.encode())
 
     def end_headers(self):
-        pass
+        self.push('\r\n'.encode())
 
     def date_time_string(self):
         pass
@@ -145,21 +190,22 @@ def parse_args():
     return parser.parse_args()
 
 
-def run():
+def run(args):
     server = AsyncServer(host=args.host, port=args.port)
     server.serve_forever()
 
 
+logging.basicConfig(
+    level='DEBUG',
+    format='[%(levelname)s] (%(processName)-10s) (%(threadName)-10s) %(message)s'
+)
+
+log = logging.getLogger(__name__)
+
 if __name__ == '__main__':
     args = parse_args()
 
-    logging.basicConfig(
-        filename=args.logfile,
-        level=getattr(logging, args.loglevel.upper()),
-        format='%(name)s: %(process)d %(message)s')
-    log = logging.getLogger(__name__)
-
     DOCUMENT_ROOT = args.document_root
     for _ in range(args.nworkers):
-        p = multiprocessing.Process(target=run)
+        p = multiprocessing.Process(target=run, args=(args,))
         p.start()
