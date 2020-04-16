@@ -5,12 +5,12 @@ import logging
 import mimetypes
 import multiprocessing
 import os
-import socket
-import urllib
-from time import strftime, gmtime
+from email.utils import formatdate
+from urllib.parse import urlparse, unquote
 
 
 def url_normalize(path):
+    log.debug('Normalizing URN...')
     if path.startswith('.'):
         path = '/' + path
     while '../' in path:
@@ -61,11 +61,15 @@ class AsyncHTTPRequestHandler(asynchat.async_chat):
         super().__init__(sock)
         self.set_terminator(b'\r\n\r\n')
 
+        self.server_name = 'cs102-SimpleAsyncHTTPServer'
+
+        # Request data
         self.method = ''
         self.urn = ''
         self.protocol = ''
         self.headers = {}
-        self.content = ''
+
+        self.path = ''
 
     def collect_incoming_data(self, data):
         log.debug(f'Incoming data: {data}')
@@ -89,6 +93,7 @@ class AsyncHTTPRequestHandler(asynchat.async_chat):
                 else:
                     self.handle_request()
             else:
+                log.debug('Starting request processing...')
                 self.handle_request()
         else:
             self.handle_request()
@@ -120,12 +125,17 @@ class AsyncHTTPRequestHandler(asynchat.async_chat):
         log.debug('Headers parsing completed successfully!')
 
     def handle_request(self):
-        method_name = 'do_' + self.method
-        if not hasattr(self, method_name):
-            self.send_error(405)
-        else:
-            handler = getattr(self, method_name)
-            handler()
+        try:
+            method_name = 'do_' + self.method
+            log.info(f'Method name: {method_name}')
+            if not hasattr(self, method_name):
+                self.send_error(405)
+            else:
+                handler = getattr(self, method_name)
+                handler()
+                log.info('Handled successfully!')
+        except:
+            self.send_error(500)
         self.handle_close()
 
     def send_header(self, keyword, value):
@@ -143,6 +153,8 @@ class AsyncHTTPRequestHandler(asynchat.async_chat):
         self.send_header('Content-Type', 'text/plain')
         self.send_header('Connection', 'close')
         self.end_headers()
+        self.handle_close()
+        log.debug(f'Sent error message with code {code} ({message})')
 
     def send_response(self, code=200, message='OK'):
         self.push(f'HTTP/1.1 {code} {message}\r\n'.encode())
@@ -150,20 +162,68 @@ class AsyncHTTPRequestHandler(asynchat.async_chat):
     def end_headers(self):
         self.push('\r\n'.encode())
 
-    def date_time_string(self):
-        pass
+    @staticmethod
+    def date_time_string():
+        return formatdate(timeval=None, localtime=False, usegmt=True)
 
     def send_head(self):
-        pass
+        log.debug('Sending response headers...')
+        self.urn = urlparse(self.urn)
+        self.path, qs = self.urn.path, self.urn.query
+        self.path = url_normalize(unquote(self.path))
+        self.path = self.path.lstrip('/')
 
-    def translate_path(self, path):
-        pass
+        self.path = os.path.join(DOCUMENT_ROOT, *os.path.split(self.path))
+        log.debug(f'Relative file path is: {self.path}')
+
+        if os.path.isdir(self.path):
+            self.path += 'index.html'
+            if not os.path.exists(self.path):
+                raise PermissionError
+
+        with open(self.path):
+            log.debug('File permissions OK!')
+        content_type, _ = mimetypes.guess_type(self.path)
+        content_size = os.path.getsize(self.path)
+
+        self.send_response()
+        self.send_header('Server', self.server_name)
+        self.send_header('Date', self.date_time_string())
+        self.send_header('Content-Type', content_type)
+        self.send_header('Content-Length', content_size)
+        self.send_header('Connection', 'Closed')
+        self.end_headers()
 
     def do_GET(self):
-        pass
+        log.debug('Entered GET handler...')
+
+        try:
+            self.send_head()
+        except FileNotFoundError:
+            self.send_error(404)
+        except PermissionError:
+            self.send_error(403)
+        except:
+            self.send_error(500)
+        else:
+            log.debug('Sending file...')
+            with open(self.path, 'rb') as f:
+                producer = FileProducer(f)
+                file = bytes()
+                while chunk := producer.more():
+                    file += chunk
+                self.send(file)
 
     def do_HEAD(self):
-        pass
+        log.debug('Entered HEAD handler...')
+        try:
+            self.send_head()
+        except FileNotFoundError:
+            self.send_error(404)
+        except PermissionError:
+            self.send_error(403)
+        except:
+            self.send_error(500)
 
 
 responses = {
@@ -175,6 +235,8 @@ responses = {
     404: ('Not Found', 'Nothing matches the given URI'),
     405: ('Method Not Allowed',
           'Specified method is invalid for this resource.'),
+    500: ('Internal Server Error',
+          'The server encountered an internal error and was unable to complete your request.'),
 }
 
 
@@ -195,17 +257,18 @@ def run(args):
     server.serve_forever()
 
 
+args = parse_args()
+
 logging.basicConfig(
     level='DEBUG',
+    filename=args.logfile,
     format='[%(levelname)s] (%(processName)-10s) (%(threadName)-10s) %(message)s'
 )
-
 log = logging.getLogger(__name__)
 
-if __name__ == '__main__':
-    args = parse_args()
+DOCUMENT_ROOT = args.document_root
 
-    DOCUMENT_ROOT = args.document_root
+if __name__ == '__main__':
     for _ in range(args.nworkers):
         p = multiprocessing.Process(target=run, args=(args,))
         p.start()
