@@ -1,7 +1,7 @@
 import argparse
 import asynchat
 import asyncore
-import logging
+import logging as log
 import mimetypes
 import multiprocessing
 import os
@@ -49,19 +49,20 @@ class AsyncServer(asyncore.dispatcher):
         self.listen(5)
 
     def handle_accepted(self, sock, addr):
-        log.debug(f'Incoming connection from {addr}')
-        AsyncHTTPRequestHandler(sock)
+        log.info(f'Incoming connection from {addr}')
+        AsyncHTTPRequestHandler(sock, self.addr)
 
     def serve_forever(self):
         asyncore.loop()
 
 
 class AsyncHTTPRequestHandler(asynchat.async_chat):
-    def __init__(self, sock):
+    def __init__(self, sock, server_addr):
         super().__init__(sock)
         self.set_terminator(b'\r\n\r\n')
 
         self.server_name = 'cs102-SimpleAsyncHTTPServer'
+        self.server_host, self.server_port = server_addr
 
         # Request data
         self.method = ''
@@ -154,7 +155,7 @@ class AsyncHTTPRequestHandler(asynchat.async_chat):
         self.send_header('Connection', 'close')
         self.end_headers()
         self.handle_close()
-        log.debug(f'Sent error message with code {code} ({message})')
+        log.info(f'Sent error message with code {code} ({message})')
 
     def send_response(self, code=200, message='OK'):
         self.push(f'HTTP/1.1 {code} {message}\r\n'.encode())
@@ -253,22 +254,23 @@ def parse_args():
 
 
 def run(args):
+    global DOCUMENT_ROOT
+
+    log.basicConfig(
+        level=args.loglevel.upper(),
+        filename=args.logfile,
+        format='[%(levelname)s] (%(processName)-10s) (%(threadName)-10s) %(message)s'
+    )
+
+    DOCUMENT_ROOT = args.document_root
+
     server = AsyncServer(host=args.host, port=args.port)
     server.serve_forever()
 
 
-args = parse_args()
-
-logging.basicConfig(
-    level='DEBUG',
-    filename=args.logfile,
-    format='[%(levelname)s] (%(processName)-10s) (%(threadName)-10s) %(message)s'
-)
-log = logging.getLogger(__name__)
-
-DOCUMENT_ROOT = args.document_root
-
 if __name__ == '__main__':
+    args = parse_args()
+
     for _ in range(args.nworkers):
         p = multiprocessing.Process(target=run, args=(args,))
         p.start()
