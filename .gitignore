@@ -1,2 +1,8 @@
 /.virtualenv/
 /.idea/
+
+/homework08-elevennote/src/settings.ini
+/homework08-elevennote/src/config/settings/local.py
+
+/static/
+/media/
