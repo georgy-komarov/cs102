@@ -10,10 +10,12 @@ services:
             - ./static:/static
         depends_on:
             - web
+        links:
+          - web
     web:
         build: .
         container_name: dg01
-        command: bash -c "sleep 5 && python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic --noinput && uwsgi --ini /usr/local/etc/elevennote.ini"
+        command: bash -c "sleep 5 && python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic --noinput && uwsgi --ini /usr/local/etc/elevennote.ini --py-autoreload 3"
         depends_on:
             - db
         volumes:
