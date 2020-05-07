@@ -182,3 +182,7 @@ span.login {
 .new-note a {
     color: #333333;
 }
+
+.errorlist {
+  margin-bottom: 0;
+}
