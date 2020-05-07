@@ -1,12 +1,11 @@
 import os
 from decouple import config
 
+BASE_DIR = PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO_DIR = os.path.dirname(BASE_DIR)
 
-def root(*dirs):
-    base_dir = os.path.join(os.path.dirname(__file__), '..', '..')
-    return os.path.abspath(os.path.join(base_dir, *dirs))
-
-BASE_DIR = root()
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 
 SECRET_KEY = config('SECRET_KEY')
 
@@ -40,7 +39,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [root('templates')],
+        'DIRS': [TEMPLATE_DIR, ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -92,7 +91,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = '/static'
 STATICFILES_DIRS = [
-    root('static'),
+    STATIC_DIR,
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
