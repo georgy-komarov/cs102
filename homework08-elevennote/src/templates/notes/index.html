@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
+    <form class="form-inline" method="get">
+        <input class="form-control mr-sm-2" type="search" name="title" placeholder="Search" aria-label="Search">
+        <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+    </form>
     {% if latest_note_list %}
         <ul>
             {% for note in latest_note_list %}
