@@ -19,7 +19,8 @@
                 </p>
                 <p class="mb-1">
                     {% for tag in note.tags.all %}
-                        <a class="badge badge-success text-white" href="?tag={{ tag.name }}">{{ tag.name }}</a>
+                        <a class="badge badge-success text-white"
+                           href="?tag={{ tag.name|urlencode }}">{{ tag.name }}</a>
                     {% endfor %}
                 </p>
                 <p>
