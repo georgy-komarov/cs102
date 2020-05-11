@@ -8,6 +8,7 @@ from django.urls import reverse, reverse_lazy
 from .models import Note
 from .forms import NoteForm
 from .mixins import NoteMixin
+from django.db.models import Q
 
 
 class NoteList(LoginRequiredMixin, ListView):
@@ -16,11 +17,13 @@ class NoteList(LoginRequiredMixin, ListView):
     context_object_name = 'latest_note_list'
 
     def get_queryset(self):
+        users_filter = Q(owner=self.request.user) | Q(shared=self.request.user)
+
         if title := self.request.GET.get('title'):
-            return Note.objects.filter(owner=self.request.user, title__icontains=title).order_by('-pub_date')
+            return Note.objects.filter(users_filter, title__icontains=title).order_by('-pub_date')
         if tag := self.request.GET.get('tag'):
-            return Note.objects.filter(owner=self.request.user, tags__name=tag).order_by('-pub_date')
-        return Note.objects.filter(owner=self.request.user).order_by('-pub_date')
+            return Note.objects.filter(users_filter, tags__name=tag).order_by('-pub_date')
+        return Note.objects.filter(users_filter).order_by('-pub_date')
 
 
 class NoteDetail(LoginRequiredMixin, DetailView):
@@ -29,7 +32,7 @@ class NoteDetail(LoginRequiredMixin, DetailView):
     context_object_name = 'note'
 
     def get_queryset(self):
-        return Note.objects.filter(owner=self.request.user)
+        return Note.objects.filter(Q(owner=self.request.user) | Q(shared=self.request.user)).order_by('-pub_date')
 
 
 class NoteCreate(LoginRequiredMixin, NoteMixin, CreateView):

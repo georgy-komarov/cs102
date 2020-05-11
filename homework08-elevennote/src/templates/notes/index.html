@@ -9,12 +9,23 @@
         <ul>
             {% for note in latest_note_list %}
                 <p>
-                    <a href="{% url 'notes:update' note.id %}">{{ note.title }}</a><br/>
-                    {{ note.body | safe }}
+                    <a class="d-inline-block" href="{% url 'notes:detail' note.id %}">{{ note.title }}</a>
+                    {% if request.user == note.owner %}
+                        <a class="d-inline-block text-secondary" href="{% url 'notes:update' note.id %}">(edit)</a>
+                    {% endif %}
                 </p>
                 <p>
+                    {{ note.body | safe }}
+                </p>
+                <p class="mb-1">
                     {% for tag in note.tags.all %}
                         <a class="badge badge-success text-white" href="?tag={{ tag.name }}">{{ tag.name }}</a>
+                    {% endfor %}
+                </p>
+                <p>
+                    <span class="badge badge-primary">{{ note.owner }}</span>
+                    {% for shared_user in note.shared.all %}
+                        <span class="badge badge-secondary">{{ shared_user }}</span>
                     {% endfor %}
                 </p>
                 <hr/>

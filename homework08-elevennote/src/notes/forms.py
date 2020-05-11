@@ -1,6 +1,7 @@
 from django import forms
 
 from .models import Note, Tag
+from accounts.models import User
 
 
 class NoteForm(forms.ModelForm):
@@ -8,11 +9,16 @@ class NoteForm(forms.ModelForm):
         model = Note
         fields = ['title', 'body']
 
-    field_order = ['title', 'tags', 'body']
+    field_order = ['title', 'tags', 'shared', 'body']
 
     tags = forms.CharField(label='Tags', widget=forms.TextInput(attrs={'data-role': 'tagsinput',
                                                                        'placeholder': 'Add a tag',
                                                                        'class': 'd-block w-25'}))
+
+    shared = forms.CharField(label='Share to users', required=False,
+                             widget=forms.TextInput(attrs={'data-role': 'tagsinput',
+                                                           'placeholder': 'Share to users',
+                                                           'class': 'd-block w-25'}))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -32,6 +38,22 @@ class NoteForm(forms.ModelForm):
                                         f'Please, remove these tags: {", ".join(set(tags_list) - set(cleaned_tags))}')
         return cleaned_tags
 
+    def clean_shared(self):
+        shared_users = self.cleaned_data.get('shared').strip()
+        users_list = shared_users.split(',') if shared_users else []
+
+        users_existing = []
+        users_not_found = []
+        for user_email in users_list:
+            try:
+                user_db = User.objects.get(email=user_email)
+                users_existing.append(user_db)
+            except User.DoesNotExist:
+                users_not_found.append(user_email)
+        if users_not_found:
+            raise forms.ValidationError(f'User(s) {", ".join(users_not_found)} not found!')
+        return users_existing
+
     def save(self, commit=True):
         instance = super().save(commit=commit)
 
@@ -41,6 +63,9 @@ class NoteForm(forms.ModelForm):
         for tag in tags:
             tag, created = Tag.objects.get_or_create(name=tag)
             instance.tags.add(tag)
+
+        shared_users = self.cleaned_data.get('shared')
+        instance.shared.set(shared_users)
 
         instance.save()
         return instance

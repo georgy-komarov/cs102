@@ -17,6 +17,7 @@ class Note(models.Model):
     body = models.TextField()
     pub_date = models.DateTimeField('date published', auto_now_add=True)
     owner = models.ForeignKey(User, related_name='notes', on_delete=models.CASCADE)
+    shared = models.ManyToManyField(User, related_name='shared_notes')
     tags = models.ManyToManyField(Tag, related_name='notes')
 
     def was_published_recently(self):
@@ -25,4 +26,3 @@ class Note(models.Model):
 
     def __str__(self):
         return self.title
-
