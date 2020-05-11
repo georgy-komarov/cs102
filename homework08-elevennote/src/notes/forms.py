@@ -27,6 +27,10 @@ class NoteForm(forms.ModelForm):
             if existing_tags:
                 self.fields['tags'].widget.attrs['value'] = existing_tags
 
+            shared_users = ','.join(map(str, self.instance.shared.all()))
+            if shared_users:
+                self.fields['shared'].widget.attrs['value'] = shared_users
+
     def clean_tags(self):
         tags = self.cleaned_data.get('tags')
         tags_list = tags.split(',')
