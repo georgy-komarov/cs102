@@ -8,6 +8,11 @@
                     <a href="{% url 'notes:update' note.id %}">{{ note.title }}</a><br/>
                     {{ note.body | safe }}
                 </p>
+                <p>
+                    {% for tag in note.tags.all %}
+                        <a class="badge badge-success text-white" href="?tag={{ tag.name }}">{{ tag.name }}</a>
+                    {% endfor %}
+                </p>
                 <hr/>
             {% endfor %}
         </ul>
