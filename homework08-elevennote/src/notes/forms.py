@@ -11,9 +11,10 @@ class NoteForm(forms.ModelForm):
 
     field_order = ['title', 'tags', 'shared', 'body']
 
-    tags = forms.CharField(label='Tags', widget=forms.TextInput(attrs={'data-role': 'tagsinput',
-                                                                       'placeholder': 'Add a tag',
-                                                                       'class': 'd-block w-25'}))
+    tags = forms.CharField(label='Tags', required=False,
+                           widget=forms.TextInput(attrs={'data-role': 'tagsinput',
+                                                         'placeholder': 'Add a tag',
+                                                         'class': 'd-block w-25'}))
 
     shared = forms.CharField(label='Share to users', required=False,
                              widget=forms.TextInput(attrs={'data-role': 'tagsinput',
@@ -33,7 +34,7 @@ class NoteForm(forms.ModelForm):
 
     def clean_tags(self):
         tags = self.cleaned_data.get('tags')
-        tags_list = tags.split(',')
+        tags_list = list(filter(lambda tag: tag, tags.split(',')))  # Remove empty tags from list
         max_length = Tag._meta.get_field('name').max_length
         cleaned_tags = list(filter(lambda tag: 0 < len(tag) < max_length, tags_list))
 
@@ -43,8 +44,8 @@ class NoteForm(forms.ModelForm):
         return cleaned_tags
 
     def clean_shared(self):
-        shared_users = self.cleaned_data.get('shared').strip()
-        users_list = shared_users.split(',') if shared_users else []
+        shared_users = self.cleaned_data.get('shared')
+        users_list = list(filter(lambda user: user, shared_users.split(',')))
 
         users_existing = []
         users_not_found = []
