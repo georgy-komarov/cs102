@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 
+from uuid import uuid4
+
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
@@ -34,10 +36,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(db_index=True, unique=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+
+    code = models.UUIDField(default=uuid4, unique=True)
+    is_confirmed = models.BooleanField(default=False)
+
     USERNAME_FIELD = 'email'
 
     objects = UserManager()
 
     def __str__(self):
         return self.email
-
