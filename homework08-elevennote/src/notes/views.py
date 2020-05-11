@@ -20,10 +20,10 @@ class NoteList(LoginRequiredMixin, ListView):
         users_filter = Q(owner=self.request.user) | Q(shared=self.request.user)
 
         if title := self.request.GET.get('title'):
-            return Note.objects.filter(users_filter, title__icontains=title).order_by('-pub_date')
+            return Note.objects.filter(users_filter, title__icontains=title).order_by('-pub_date').distinct()
         if tag := self.request.GET.get('tag'):
-            return Note.objects.filter(users_filter, tags__name=tag).order_by('-pub_date')
-        return Note.objects.filter(users_filter).order_by('-pub_date')
+            return Note.objects.filter(users_filter, tags__name=tag).order_by('-pub_date').distinct()
+        return Note.objects.filter(users_filter).order_by('-pub_date').distinct()
 
 
 class NoteDetail(LoginRequiredMixin, DetailView):
@@ -32,7 +32,8 @@ class NoteDetail(LoginRequiredMixin, DetailView):
     context_object_name = 'note'
 
     def get_queryset(self):
-        return Note.objects.filter(Q(owner=self.request.user) | Q(shared=self.request.user)).order_by('-pub_date')
+        return Note.objects.filter(Q(owner=self.request.user) | Q(shared=self.request.user)).order_by(
+            '-pub_date').distinct()
 
 
 class NoteCreate(LoginRequiredMixin, NoteMixin, CreateView):
@@ -65,4 +66,3 @@ class NoteDelete(LoginRequiredMixin, DeleteView):
 
     def get_queryset(self):
         return Note.objects.filter(owner=self.request.user)
-
