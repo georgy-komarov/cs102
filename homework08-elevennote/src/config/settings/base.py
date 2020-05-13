@@ -100,3 +100,7 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
 DJANGO_WYSIWYG_FLAVOR = 'ckeditor'
+
+JWT_AUTH = {
+    'JWT_RESPONSE_PAYLOAD_HANDLER': 'api.auth.jwt_response_payload_handler'
+}
