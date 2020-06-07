@@ -5,6 +5,7 @@ from pathlib import Path
 
 class MyGit:
     def __init__(self):
+        self.git_folder = '.git'
         self.args = self.argparse_init()
 
     def argparse_init(self):
@@ -37,14 +38,14 @@ class MyGit:
 
     def init(self):
         path = self.args.path
-        os.makedirs(os.path.join(path, '.git'), exist_ok=True)
+        os.makedirs(os.path.join(path, self.git_folder), exist_ok=True)
 
         for folder in ['objects', 'refs', 'refs/heads']:
-            os.makedirs(os.path.join(path, '.git', folder), exist_ok=True)
-        with open(os.path.join(path, '.git', 'HEAD'), 'wb') as f:
+            os.makedirs(os.path.join(path, self.git_folder, folder), exist_ok=True)
+        with open(os.path.join(path, self.git_folder, 'HEAD'), 'wb') as f:
             f.write(b'ref: refs/heads/master\n')
 
-        print(f'Initialized empty Git repository in {os.path.abspath(os.path.join(path, ".git"))}')
+        print(f'Initialized empty Git repository in {os.path.abspath(os.path.join(path, self.git_folder))}')
 
     def cat_file(self):
         raise NotImplementedError
