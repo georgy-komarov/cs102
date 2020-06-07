@@ -37,6 +37,8 @@ class MyGit:
         parser_ls_tree.set_defaults(func=self.ls_tree)
 
         parser_write_tree = subparsers.add_parser('write-tree', help='Write a tree object')
+        parser_write_tree.add_argument('path', type=Path, default=Path('.'), nargs='?',
+                                       help='directory (tree) to write')
         parser_write_tree.set_defaults(func=self.write_tree)
 
         parser_commit_tree = subparsers.add_parser('commit-tree', help='Create a commit')
@@ -134,7 +136,41 @@ class MyGit:
                 print(f'{obj_mode} {"blob" if obj_mode[0] == "1" else "tree"} {obj_hash}\t{obj_name}')
 
     def write_tree(self):
-        raise NotImplementedError
+        tree_path = self.args.path
+
+        tree_data = b''
+
+        (_, _, filenames) = next(os.walk(tree_path))
+        for file in filenames:
+            file_path = os.path.join(tree_path, file)
+
+            with open(file_path, 'rb') as f:
+                content = f.read()
+
+            header = f'blob {len(content)}'.encode()
+            data = header + b'\x00' + content
+
+            sha1_hash = hashlib.sha1(data).digest()
+            mode = oct(os.stat(file_path).st_mode)[2:]
+
+            tree_data += mode.encode() + b' ' + file.encode() + b'\x00' + sha1_hash
+
+        header = f'tree {len(tree_data)}'.encode()
+        data = header + b'\x00' + tree_data
+
+        # WARNING: Hashes may be not he same as git on Windows because of file permissions
+        # data = data.replace(b'100666', b'100644')
+
+        sha1_hash = hashlib.sha1(data).hexdigest()
+
+        subfolder, sha1_rest = sha1_hash[:2], sha1_hash[2:]
+        obj_path = os.path.join(self.git_folder, 'objects', subfolder, sha1_rest)
+        os.makedirs(os.path.dirname(obj_path), exist_ok=True)
+
+        with open(obj_path, 'wb') as f:
+            f.write(zlib.compress(data))
+
+        print(sha1_hash)
 
     def commit_tree(self):
         raise NotImplementedError
