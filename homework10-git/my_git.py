@@ -12,6 +12,7 @@ class MyGit:
 
     def argparse_init(self):
         parser = argparse.ArgumentParser(description='My own git')
+        parser.set_defaults(func=parser.print_help)
         subparsers = parser.add_subparsers(metavar='command')
 
         parser_init = subparsers.add_parser('init', help='Initialize the .git directory')
@@ -31,6 +32,8 @@ class MyGit:
         parser_hash_object.set_defaults(func=self.hash_object)
 
         parser_ls_tree = subparsers.add_parser('ls-tree', help='Read a tree object')
+        parser_ls_tree.add_argument('hash', help='tree hash')
+        parser_ls_tree.add_argument('--name-only', dest='name_only', action='store_true', help='list only filenames')
         parser_ls_tree.set_defaults(func=self.ls_tree)
 
         parser_write_tree = subparsers.add_parser('write-tree', help='Write a tree object')
@@ -43,6 +46,25 @@ class MyGit:
         parser_clone.set_defaults(func=self.clone)
 
         return parser.parse_args()
+
+    def read_object(self, hash):
+        subfolder, sha1_rest = hash[:2], hash[2:]
+        obj_dir = os.path.join(self.git_folder, 'objects', subfolder)
+
+        # Allow to search with part of hash
+        try:
+            objects = [name for name in os.listdir(obj_dir) if name.startswith(sha1_rest)]
+        except FileNotFoundError:  # if subfolder does not exist
+            objects = []
+
+        if not objects:
+            raise ValueError(f'object {hash} not found')
+        if len(objects) >= 2:
+            raise ValueError(f'multiple objects ({len(objects)}) found with prefix {hash}')
+
+        obj_path = os.path.join(obj_dir, objects[0])
+        with open(obj_path, 'rb') as f:
+            return zlib.decompress(f.read())
 
     def init(self):
         path = self.args.path
@@ -61,24 +83,8 @@ class MyGit:
         if len(sha1_prefix) < 2:
             raise ValueError('Hash should be at least 2 characters')
         if pretty_print:
-            subfolder, sha1_rest = sha1_prefix[:2], sha1_prefix[2:]
-            obj_dir = os.path.join(self.git_folder, 'objects', subfolder)
-
-            # Allow to search with part of hash
-            try:
-                objects = [name for name in os.listdir(obj_dir) if name.startswith(sha1_rest)]
-            except FileNotFoundError:  # if subfolder does not exist
-                objects = []
-
-            if not objects:
-                raise ValueError(f'object {sha1_prefix} not found')
-            if len(objects) >= 2:
-                raise ValueError(f'multiple objects ({len(objects)}) found with prefix {sha1_prefix}')
-
-            obj_path = os.path.join(obj_dir, objects[0])
-            with open(obj_path, 'rb') as f:
-                data = zlib.decompress(f.read())
-                blob, content = map(bytes.decode, data.split(b'\x00', maxsplit=1))
+            data = self.read_object(sha1_prefix)
+            blob, content = map(bytes.decode, data.split(b'\x00', maxsplit=1))
 
             print(blob, content, sep='\n\n')
         else:
@@ -109,7 +115,24 @@ class MyGit:
             print('no action supplied')
 
     def ls_tree(self):
-        raise NotImplementedError
+        sha1_prefix = self.args.hash
+        name_only = self.args.name_only
+
+        data = self.read_object(sha1_prefix)
+        blob, content = data.split(b'\x00', maxsplit=1)
+
+        while content:
+            obj_mod_name, obj_other = content.split(b'\x00', maxsplit=1)
+            obj_hash, content = obj_other[:20], obj_other[20:]
+            obj_mode, obj_name = obj_mod_name.split(b' ')
+            obj_mode = obj_mode.zfill(6)
+
+            obj_mode, obj_hash, obj_name = obj_mode.decode(), obj_hash.hex(), obj_name.decode()
+
+            if name_only:
+                print(obj_name)
+            else:
+                print(f'{obj_mode} {"blob" if obj_mode[0] == "1" else "tree"} {obj_hash}\t{obj_name}')
 
     def write_tree(self):
         raise NotImplementedError
