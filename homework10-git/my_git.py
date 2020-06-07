@@ -26,7 +26,7 @@ class MyGit:
         parser_cat_file.set_defaults(func=self.cat_file)
 
         parser_hash_object = subparsers.add_parser('hash-object', help='Create a blob object')
-        parser_hash_object.add_argument('filepath', help='file to hash')
+        parser_hash_object.add_argument('filepath', type=Path, help='file to hash')
         parser_hash_object.add_argument('-w', dest='write', action='store_true',
                                         help='write the object into the object database')
         parser_hash_object.set_defaults(func=self.hash_object)
