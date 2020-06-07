@@ -99,16 +99,15 @@ class MyGit:
 
         header = f'blob {len(content)}'.encode()
         data = header + b'\x00' + content
-        compressed_data = zlib.compress(data)
-
         sha1_hash = hashlib.sha1(data).hexdigest()
+
         if write:
             subfolder, sha1_rest = sha1_hash[:2], sha1_hash[2:]
             obj_path = os.path.join(self.git_folder, 'objects', subfolder, sha1_rest)
             os.makedirs(os.path.dirname(obj_path), exist_ok=True)
 
             with open(obj_path, 'wb') as f:
-                f.write(compressed_data)
+                f.write(zlib.compress(data))
 
             print(f'file {file_path} written as {obj_path}')
         else:
