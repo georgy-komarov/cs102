@@ -1,12 +1,13 @@
 import argparse
+import hashlib
 import os
-from pathlib import Path
 import zlib
+from pathlib import Path
 
 
 class MyGit:
     def __init__(self):
-        self.git_folder = '.git'
+        self.git_folder = '.mygit'
         self.args = self.argparse_init()
 
     def argparse_init(self):
@@ -24,6 +25,9 @@ class MyGit:
         parser_cat_file.set_defaults(func=self.cat_file)
 
         parser_hash_object = subparsers.add_parser('hash-object', help='Create a blob object')
+        parser_hash_object.add_argument('filepath', help='file to hash')
+        parser_hash_object.add_argument('-w', dest='write', action='store_true',
+                                        help='write the object into the object database')
         parser_hash_object.set_defaults(func=self.hash_object)
 
         parser_ls_tree = subparsers.add_parser('ls-tree', help='Read a tree object')
@@ -77,9 +81,32 @@ class MyGit:
                 blob, content = map(bytes.decode, data.split(b'\x00', maxsplit=1))
 
             print(blob, content, sep='\n\n')
+        else:
+            print('no action supplied')
 
     def hash_object(self):
-        raise NotImplementedError
+        file_path = self.args.filepath
+        write = self.args.write
+
+        with open(file_path, 'rb') as f:
+            content = f.read()
+
+        header = f'blob {len(content)}'.encode()
+        data = header + b'\x00' + content
+        compressed_data = zlib.compress(data)
+
+        sha1_hash = hashlib.sha1(data).hexdigest()
+        if write:
+            subfolder, sha1_rest = sha1_hash[:2], sha1_hash[2:]
+            obj_path = os.path.join(self.git_folder, 'objects', subfolder, sha1_rest)
+            os.makedirs(os.path.dirname(obj_path), exist_ok=True)
+
+            with open(obj_path, 'wb') as f:
+                f.write(compressed_data)
+
+            print(f'file {file_path} written as {obj_path}')
+        else:
+            print('no action supplied')
 
     def ls_tree(self):
         raise NotImplementedError
