@@ -1,16 +1,18 @@
 import argparse
+import os
+from pathlib import Path
 
 
 class MyGit:
     def __init__(self):
         self.args = self.argparse_init()
-        print()
 
     def argparse_init(self):
         parser = argparse.ArgumentParser(description='My own git')
         subparsers = parser.add_subparsers(metavar='command')
 
         parser_init = subparsers.add_parser('init', help='Initialize the .git directory')
+        parser_init.add_argument('path', type=Path, default=Path('.'), nargs='?', help='path to git repository')
         parser_init.set_defaults(func=self.init)
 
         parser_cat_file = subparsers.add_parser('cat-file', help='Read a blob object')
@@ -34,7 +36,15 @@ class MyGit:
         return parser.parse_args()
 
     def init(self):
-        raise NotImplementedError
+        path = self.args.path
+        os.makedirs(os.path.join(path, '.git'), exist_ok=True)
+
+        for folder in ['objects', 'refs', 'refs/heads']:
+            os.makedirs(os.path.join(path, '.git', folder), exist_ok=True)
+        with open(os.path.join(path, '.git', 'HEAD'), 'wb') as f:
+            f.write(b'ref: refs/heads/master\n')
+
+        print(f'Initialized empty Git repository in {os.path.abspath(os.path.join(path, ".git"))}')
 
     def cat_file(self):
         raise NotImplementedError
