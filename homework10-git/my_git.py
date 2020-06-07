@@ -7,7 +7,7 @@ from pathlib import Path
 
 class MyGit:
     def __init__(self):
-        self.git_folder = '.mygit'
+        self.git_folder = '.git'
         self.args = self.argparse_init()
 
     def argparse_init(self):
@@ -40,12 +40,6 @@ class MyGit:
         parser_write_tree.add_argument('path', type=Path, default=Path('.'), nargs='?',
                                        help='directory (tree) to write')
         parser_write_tree.set_defaults(func=self.write_tree)
-
-        parser_commit_tree = subparsers.add_parser('commit-tree', help='Create a commit')
-        parser_commit_tree.set_defaults(func=self.commit_tree)
-
-        parser_clone = subparsers.add_parser('clone', help='Clone a repository')
-        parser_clone.set_defaults(func=self.clone)
 
         return parser.parse_args()
 
@@ -171,12 +165,6 @@ class MyGit:
             f.write(zlib.compress(data))
 
         print(sha1_hash)
-
-    def commit_tree(self):
-        raise NotImplementedError
-
-    def clone(self):
-        raise NotImplementedError
 
 
 if __name__ == '__main__':
