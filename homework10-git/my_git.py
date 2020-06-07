@@ -1,6 +1,7 @@
 import argparse
 import os
 from pathlib import Path
+import zlib
 
 
 class MyGit:
@@ -17,6 +18,9 @@ class MyGit:
         parser_init.set_defaults(func=self.init)
 
         parser_cat_file = subparsers.add_parser('cat-file', help='Read a blob object')
+        parser_cat_file.add_argument('hash', help='object\'s hash')
+        parser_cat_file.add_argument('-p', dest='pretty_print', action='store_true',
+                                     help='pretty-print object\'s content')
         parser_cat_file.set_defaults(func=self.cat_file)
 
         parser_hash_object = subparsers.add_parser('hash-object', help='Create a blob object')
@@ -48,7 +52,31 @@ class MyGit:
         print(f'Initialized empty Git repository in {os.path.abspath(os.path.join(path, self.git_folder))}')
 
     def cat_file(self):
-        raise NotImplementedError
+        sha1_prefix = self.args.hash
+        pretty_print = self.args.pretty_print
+        if len(sha1_prefix) < 2:
+            raise ValueError('Hash should be at least 2 characters')
+        if pretty_print:
+            subfolder, sha1_rest = sha1_prefix[:2], sha1_prefix[2:]
+            obj_dir = os.path.join(self.git_folder, 'objects', subfolder)
+
+            # Allow to search with part of hash
+            try:
+                objects = [name for name in os.listdir(obj_dir) if name.startswith(sha1_rest)]
+            except FileNotFoundError:  # if subfolder does not exist
+                objects = []
+
+            if not objects:
+                raise ValueError(f'object {sha1_prefix} not found')
+            if len(objects) >= 2:
+                raise ValueError(f'multiple objects ({len(objects)}) found with prefix {sha1_prefix}')
+
+            obj_path = os.path.join(obj_dir, objects[0])
+            with open(obj_path, 'rb') as f:
+                data = zlib.decompress(f.read())
+                blob, content = map(bytes.decode, data.split(b'\x00', maxsplit=1))
+
+            print(blob, content, sep='\n\n')
 
     def hash_object(self):
         raise NotImplementedError
